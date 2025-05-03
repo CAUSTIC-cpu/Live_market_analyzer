@@ -61,7 +61,6 @@ def plot_candlestick(data, fib_levels):
         high=data['high'],
         low=data['low'],
         close=data['close'],
-        name='Candles'
     ))
 
     for level, value in fib_levels.items():
