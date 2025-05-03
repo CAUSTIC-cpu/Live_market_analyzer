@@ -1,17 +1,19 @@
-# utils/data_fetcher.py
-
 import pandas as pd
 import numpy as np
 import datetime
 
-def get_price_data(use_mock=True):
-    if use_mock:
-        return generate_mock_data()
-    else:
-        # Placeholder for API-based fetch
-        raise NotImplementedError("API fetch not implemented yet.")
+def generate_mock_ohlc_data():
+    dates = pd.date_range(end=datetime.datetime.now(), periods=100, freq='H')
+    base = np.cumsum(np.random.normal(0, 1, 100)) + 2350
+    open_ = base
+    close = base + np.random.normal(0, 0.5, size=100)
+    high = np.maximum(open_, close) + np.random.uniform(0, 1, size=100)
+    low = np.minimum(open_, close) - np.random.uniform(0, 1, size=100)
 
-def generate_mock_data():
-    dates = pd.date_range(end=datetime.datetime.today(), periods=100, freq='H')
-    prices = np.cumsum(np.random.normal(0, 1, size=100)) + 2350
-    return pd.DataFrame({'datetime': dates, 'price': prices})
+    return pd.DataFrame({
+        'datetime': dates,
+        'open': open_,
+        'high': high,
+        'low': low,
+        'close': close
+    })
