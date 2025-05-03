@@ -1,16 +1,34 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 import datetime
+import plotly.graph_objects as go
+import matplotlib.pyplot as plt
 
-# --- Mock Data Generator ---
-def generate_mock_data():
-    dates = pd.date_range(end=datetime.datetime.today(), periods=100, freq='H')
-    prices = np.cumsum(np.random.normal(0, 1, size=100)) + 2350  # Simulated XAU/USD prices
-    return pd.DataFrame({'datetime': dates, 'price': prices})
+# --- Streamlit App Config ---
+st.set_page_config(layout="wide")
+st.title("Fibonacci + RSI Trading Strategy (Mock XAU/USD)")
 
-# --- Calculate RSI ---
+# --- Generate Mock OHLC Data ---
+def generate_mock_ohlc(periods=100):
+    dates = pd.date_range(end=datetime.datetime.now(), periods=periods, freq='H')
+    price = 2350 + np.cumsum(np.random.normal(0, 2, size=periods))
+    open_ = price
+    close = open_ + np.random.normal(0, 1, size=periods)
+    high = np.maximum(open_, close) + np.random.uniform(0.5, 2.0, size=periods)
+    low = np.minimum(open_, close) - np.random.uniform(0.5, 2.0, size=periods)
+    
+    return pd.DataFrame({
+        'datetime': dates,
+        'open': open_,
+        'high': high,
+        'low': low,
+        'close': close
+    })
+
+# --- RSI Calculation ---
 def calculate_rsi(data, period=14):
-    delta = data['price'].diff()
+    delta = data['close'].diff()
     gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
     loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
     rs = gain / loss
@@ -19,8 +37,8 @@ def calculate_rsi(data, period=14):
 
 # --- Fibonacci Levels ---
 def calculate_fibonacci_levels(data):
-    max_price = data['price'].max()
-    min_price = data['price'].min()
+    max_price = data['high'].max()
+    min_price = data['low'].min()
     diff = max_price - min_price
     levels = {
         '0.0': max_price,
@@ -33,45 +51,49 @@ def calculate_fibonacci_levels(data):
     }
     return levels
 
-# --- Plotting Function ---
-def plot_chart(data, levels):
-    # Price chart with Fibonacci levels
-    fig, ax1 = plt.subplots(figsize=(10, 4))
-    ax1.plot(data['datetime'], data['price'], label='Price', color='blue')
-    for level, value in levels.items():
-        ax1.axhline(y=value, linestyle='--', alpha=0.5, label=f'Fib {level}')
-    ax1.set_title('Mock XAU/USD with Fibonacci Levels')
-    ax1.set_ylabel('Price')
-    ax1.legend()
+# --- Plot Candlestick Chart ---
+def plot_candlestick(data, fib_levels):
+    fig = go.Figure()
+
+    fig.add_trace(go.Candlestick(
+        x=data['datetime'],
+        open=data['open'],
+        high=data['high'],
+        low=data['low'],
+        close=data['close'],
+        name='Candles'
+    ))
+
+    for level, value in fib_levels.items():
+        fig.add_hline(y=value, line_dash="dot", annotation_text=f"Fib {level}", annotation_position="right")
+
+    fig.update_layout(
+        title="Mock XAU/USD Candlestick Chart with Fibonacci Levels",
+        xaxis_title="Date",
+        yaxis_title="Price",
+        template="plotly_dark",
+        height=500
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+# --- Plot RSI ---
+def plot_rsi(data):
+    fig, ax = plt.subplots(figsize=(10, 2))
+    ax.plot(data['datetime'], data['RSI'], label='RSI', color='purple')
+    ax.axhline(70, color='red', linestyle='--')
+    ax.axhline(30, color='green', linestyle='--')
+    ax.axhline(50, color='gray', linestyle='--', alpha=0.5)
+    ax.set_title('RSI (14)')
+    ax.set_ylabel('RSI')
+    ax.legend()
     st.pyplot(fig)
 
-    # RSI chart
-    fig, ax2 = plt.subplots(figsize=(10, 2))
-    ax2.plot(data['datetime'], data['RSI'], color='purple', label='RSI')
-    ax2.axhline(70, color='red', linestyle='--')
-    ax2.axhline(30, color='green', linestyle='--')
-    ax2.axhline(50, color='gray', linestyle='--', alpha=0.5)
-    ax2.set_title('RSI (14)')
-    ax2.set_ylabel('RSI')
-    ax2.legend()
-    st.pyplot(fig)
-
-# --- Streamlit App ---
-st.set_page_config(layout="wide")
-st.title("Fibonacci + RSI Trading Strategy (Mock XAU/USD)")
-
-# Load and process data
-data = generate_mock_data()
+# --- Main Execution ---
+data = generate_mock_ohlc()
 data = calculate_rsi(data)
 fib_levels = calculate_fibonacci_levels(data)
 
-# Show plots
-plot_chart(data, fib_levels)
+plot_candlestick(data, fib_levels)
+plot_rsi(data)
 
-# Add TradingView Chart Widget
-st.markdown("""
-<iframe src="https://www.tradingview.com/widgetembed/?frameElementId=tradingview_34d1b&symbol=OANDA%3AXAUUSD&interval=60&hidesidetoolbar=1&symboledit=1&saveimage=1&toolbarbg=F1F3F6&studies=[]&theme=dark&style=1&timezone=Etc%2FUTC&withdateranges=1&hideideas=1&allow_symbol_change=true&watchlist=[]&enabled_features=[]&disabled_features=[]&locale=en"
-width="100%" height="500" frameborder="0" allowtransparency="true" scrolling="no"></iframe>
-""", unsafe_allow_html=True)
-
-st.caption("This app uses mock data for demo purposes. RSI and Fibonacci levels are calculated on-the-fly.")
+st.caption("This app uses simulated OHLC data for XAU/USD. Fibonacci levels and RSI are calculated in real-time.")
