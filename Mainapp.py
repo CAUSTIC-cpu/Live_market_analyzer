@@ -4,6 +4,7 @@ import numpy as np
 import datetime
 import plotly.graph_objects as go
 import matplotlib.pyplot as plt
+pip install googlefinance
 
 # --- Streamlit App Config ---
 st.set_page_config(layout="wide")
